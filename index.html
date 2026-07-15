@@ -274,30 +274,92 @@
     };
   }
 
-  var data = load();
+  // ---------- Supabase 공용 저장소 (여러 기기 실시간 공유) ----------
+  var SUPABASE_URL = "https://zrtxnosbeykmkfwyjgvt.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_HjPBmfpavqLKdc3JPwuI0Q_bR7wpuSs";
+  var REST_URL = SUPABASE_URL + "/rest/v1/app_state";
+  var SB_HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Content-Type": "application/json"
+  };
+  var REFRESH_SAFE_ROUTES = ["home","missions","calendar","ranking"];
+  var remoteUpdatedAt = null;
+  var savingToRemote = 0;
 
-  function load(){
+  function normalize(p){
+    if(!p || !p.cohorts || !p.missions || !p.completions) p = defaultData();
+    p.adminMode = false;              // admin unlock is device-local, never shared
+    if(!p.adminPin) p.adminPin = "0000";
+    p.currentTraineeId = null;        // login is device-local, never shared
+    if(!Array.isArray(p.orgs)){
+      p.orgs = [];
+      if(p.orgName){ p.orgs.push({ id: uid(), name: p.orgName }); }
+    }
+    delete p.orgName;
+    (p.cohorts||[]).forEach(function(c){
+      if(!c.orgId){ c.orgId = p.orgs.length ? p.orgs[0].id : null; }
+    });
+    (p.trainees||[]).forEach(function(t){ if(!t.password) t.password = "1234"; });
+    return p;
+  }
+
+  function loadLocalCache(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return defaultData();
-      var p = JSON.parse(raw);
-      if(!p.cohorts || !p.missions || !p.completions) return defaultData();
-      p.adminMode = false; // never persist an unlocked admin session across page loads
-      if(!p.adminPin) p.adminPin = "0000";
-      p.currentTraineeId = null; // always require a fresh personal login on page load
-      if(!Array.isArray(p.orgs)){
-        p.orgs = [];
-        if(p.orgName){ p.orgs.push({ id: uid(), name: p.orgName }); }
-      }
-      delete p.orgName;
-      (p.cohorts||[]).forEach(function(c){
-        if(!c.orgId){ c.orgId = p.orgs.length ? p.orgs[0].id : null; }
-      });
-      (p.trainees||[]).forEach(function(t){ if(!t.password) t.password = "1234"; });
-      return p;
+      return normalize(JSON.parse(raw));
     }catch(e){ return defaultData(); }
   }
-  function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+  var data = loadLocalCache();
+
+  // 모든 기기가 공유하는 항목만 서버에 저장 (로그인/관리자 상태는 기기별 로컬)
+  function sharedSlice(d){
+    return {
+      orgs: d.orgs, cohorts: d.cohorts, groups: d.groups,
+      trainees: d.trainees, missions: d.missions,
+      completions: d.completions, adminPin: d.adminPin
+    };
+  }
+
+  function save(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){}
+    pushRemote();
+  }
+
+  function pushRemote(){
+    if(typeof fetch !== "function") return;
+    savingToRemote++;
+    fetch(REST_URL + "?id=eq.main", {
+      method: "PATCH",
+      headers: Object.assign({}, SB_HEADERS, { "Prefer": "return=representation" }),
+      body: JSON.stringify({ data: sharedSlice(data) })
+    }).then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(rows){ if(rows && rows[0]) remoteUpdatedAt = rows[0].updated_at; })
+      .catch(function(){})
+      .then(function(){ savingToRemote = Math.max(0, savingToRemote - 1); });
+  }
+
+  function pullRemote(initial){
+    if(typeof fetch !== "function") return Promise.resolve();
+    return fetch(REST_URL + "?select=data,updated_at&id=eq.main", { headers: SB_HEADERS })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(rows){
+        if(!rows || !rows[0]) return;
+        var row = rows[0];
+        if(!initial && (savingToRemote > 0 || row.updated_at === remoteUpdatedAt)) return;
+        remoteUpdatedAt = row.updated_at;
+        var keepTrainee = data.currentTraineeId, keepAdmin = data.adminMode;
+        var merged = normalize(row.data || {});
+        merged.currentTraineeId = (keepTrainee && merged.trainees.some(function(t){ return t.id===keepTrainee; })) ? keepTrainee : null;
+        merged.adminMode = keepAdmin;
+        data = merged;
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){}
+        if(initial || REFRESH_SAFE_ROUTES.indexOf(currentRoute) > -1) renderAll();
+      })
+      .catch(function(){});
+  }
 
   function esc(s){
     return String(s).replace(/[&<>"']/g, function(c){
@@ -1215,7 +1277,9 @@
     }
   }
 
-  renderAll();
+  renderAll();               // 즉시 캐시/빈 화면 표시
+  pullRemote(true);          // 서버에서 공용 데이터 불러와 갱신
+  setInterval(function(){ pullRemote(false); }, 12000); // 12초마다 다른 기기 변경사항 동기화
 
   setInterval(function(){
     var el = document.getElementById("home-datetime");
