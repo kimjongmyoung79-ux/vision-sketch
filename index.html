@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>비전 스케치 - 훈련생 관리 프로그램</title>
+<style>
+  :root{
+    --bg:#f2f3f8; --card:#ffffff; --text:#1f2937; --muted:#8b93a7;
+    --border:#eef0f5; --primary:#6d5bf6; --primary2:#8b5cf6;
+    --danger:#ef4444; --shadow:0 2px 10px rgba(30,30,60,0.06);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{ height:100%; overflow-x:hidden; }
+  body{
+    margin:0; font-family:"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    background:#e7e8f0; color:var(--text); min-height:100%; overscroll-behavior-y:none;
+    overflow-x:hidden; width:100%;
+  }
+  #shell{
+    max-width:430px; margin:0 auto; background:var(--bg); min-height:100vh; min-height:100dvh;
+    position:relative; box-shadow:0 0 40px rgba(0,0,0,0.12); overflow-x:hidden;
+    padding-bottom:calc(78px + env(safe-area-inset-bottom));
+  }
+  #app{padding:16px 16px 8px;}
+
+  .gear-btn{
+    position:fixed; top:calc(14px + env(safe-area-inset-top)); right:calc(50% - 430px/2 + 14px); z-index:50;
+    width:36px; height:36px; border-radius:50%; border:none; background:rgba(0,0,0,0.35);
+    color:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  @media (max-width:430px){ .gear-btn{ right:calc(14px + env(safe-area-inset-right)); } }
+
+  /* ---- Home header ---- */
+  .home-header{
+    background:linear-gradient(135deg,var(--primary),var(--primary2));
+    color:#fff; padding:22px 18px 26px; border-radius:0 0 22px 22px; margin:-16px -16px 16px;
+  }
+  .home-header .greet{display:flex; align-items:center; justify-content:space-between;}
+  .home-header .greet-text{font-size:16px; font-weight:700;}
+  .home-header .date-time{font-size:12.5px; opacity:.85; margin-top:4px;}
+  .mission-card{
+    background:rgba(255,255,255,0.16); border-radius:16px; padding:16px; margin-top:16px;
+  }
+  .mission-card .label{font-size:12.5px; opacity:.9;}
+  .mission-card .pct{font-size:34px; font-weight:800; margin:4px 0;}
+  .mission-card .sub{font-size:12.5px; opacity:.9;}
+
+  /* ---- page header (non-home) ---- */
+  .page-header{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .page-header h2{margin:0; font-size:18px;}
+  .back-btn{
+    border:none; background:#fff; width:34px; height:34px; border-radius:50%;
+    box-shadow:var(--shadow); cursor:pointer; font-size:15px;
+  }
+
+  .card{
+    background:var(--card); border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .card h3{margin:0 0 10px; font-size:14.5px;}
+
+  .area-row{display:flex; align-items:center; gap:12px; padding:9px 0;}
+  .area-icon{
+    width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    font-size:16px; color:#fff; flex:0 0 auto;
+  }
+  .area-main{flex:1; min-width:0;}
+  .area-name{font-size:13.5px; font-weight:700; margin-bottom:5px;}
+  .bar-wrap{background:#eef0f5; border-radius:6px; height:8px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:6px;}
+  .area-pct{font-size:13px; font-weight:700; color:var(--muted); width:38px; text-align:right; flex:0 0 auto;}
+
+  .chip-row{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px;}
+  .chip{
+    flex:0 0 auto; padding:7px 14px; border-radius:999px; background:#fff; color:var(--muted);
+    font-size:13px; font-weight:600; border:1px solid var(--border); cursor:pointer; white-space:nowrap;
+  }
+  .chip.active{background:var(--primary); color:#fff; border-color:var(--primary);}
+
+  .mission-item{
+    display:flex; align-items:center; gap:12px; background:#fff; border-radius:14px; padding:12px 14px;
+    margin-bottom:10px; box-shadow:var(--shadow);
+  }
+  .check-circle{
+    width:26px; height:26px; border-radius:50%; border:2px solid #d7dbe6; flex:0 0 auto; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; font-weight:800;
+  }
+  .check-circle.done{border-color:transparent;}
+  .mission-title{font-size:14px; font-weight:700;}
+  .mission-title.done{color:var(--muted); text-decoration:line-through;}
+  .mission-meta{font-size:12px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px;}
+  .badge-pill{
+    display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; color:#fff;
+  }
+  .mission-del{
+    border:none; background:#f3f4f6; color:var(--muted); width:26px; height:26px; border-radius:50%;
+    font-size:15px; font-weight:800; cursor:pointer; flex:0 0 auto;
+  }
+  .mission-del:hover{background:#fee2e2; color:var(--danger);}
+
+  .fab{
+    position:fixed; bottom:calc(88px + env(safe-area-inset-bottom)); right:calc(50% - 430px/2 + 20px);
+    width:54px; height:54px; border-radius:50%;
+    background:var(--primary); color:#fff; border:none; font-size:26px; box-shadow:0 6px 16px rgba(109,91,246,0.5);
+    cursor:pointer; z-index:40;
+  }
+  @media (max-width:430px){ .fab{ right:calc(20px + env(safe-area-inset-right)); } }
+
+  nav#bottom-nav{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px;
+    background:#fff; border-top:1px solid var(--border); display:flex; z-index:45;
+    box-shadow:0 -2px 10px rgba(0,0,0,0.05); padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav#bottom-nav button{
+    flex:1; border:none; background:none; padding:10px 4px 8px; cursor:pointer; color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; font-weight:600;
+  }
+  nav#bottom-nav button .ic{font-size:18px;}
+  nav#bottom-nav button.active{color:var(--primary);}
+
+  input[type=text], input[type=time], input[type=password], select{
+    padding:11px; border:1px solid var(--border); border-radius:10px; font-size:16px;
+    background:#fafafa; width:100%;
+  }
+  .row{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  label.field-label{font-size:13px; font-weight:700; color:var(--muted); display:block; margin:14px 0 6px;}
+
+  button.btn{
+    padding:10px 16px; border:none; border-radius:10px; background:var(--primary);
+    color:#fff; font-size:13.5px; font-weight:700; cursor:pointer;
+  }
+  button.btn.secondary{background:#eef0ff; color:var(--primary);}
+  button.btn.danger{background:#fee2e2; color:var(--danger);}
+  button.btn.block{width:100%; padding:13px; font-size:14.5px; margin-top:16px;}
+  button.btn:hover{filter:brightness(0.96);}
+
+  .icon-select{display:flex; gap:10px; flex-wrap:wrap;}
+  .icon-choice{display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; width:56px;}
+  .icon-opt{
+    width:52px; height:52px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    font-size:20px; color:#fff; border:3px solid transparent; opacity:.55;
+  }
+  .icon-choice.selected .icon-opt{opacity:1; border-color:#111827;}
+  .icon-choice .icon-label{font-size:11px; font-weight:600; color:var(--muted); text-align:center;}
+  .icon-choice.selected .icon-label{color:var(--text); font-weight:700;}
+
+  .toggle{display:flex; align-items:center; gap:10px; margin-top:14px;}
+  .switch{position:relative; width:44px; height:24px;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider{
+    position:absolute; inset:0; background:#d7dbe6; border-radius:999px; cursor:pointer; transition:.15s;
+  }
+  .slider::before{
+    content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff;
+    border-radius:50%; transition:.15s;
+  }
+  .switch input:checked + .slider{background:var(--primary);}
+  .switch input:checked + .slider::before{transform:translateX(20px);}
+
+  .trainee-pick{
+    display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border);
+  }
+  .group-label{font-size:12px; color:var(--muted); font-weight:700; margin:10px 0 2px;}
+
+  .avatar{
+    width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--primary2));
+    color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; flex:0 0 auto;
+    overflow:hidden;
+  }
+  .avatar img{width:100%; height:100%; object-fit:cover; border-radius:50%;}
+  .profile-card{
+    background:linear-gradient(135deg,var(--primary),var(--primary2)); color:#fff; border-radius:18px;
+    padding:20px; text-align:center; margin-bottom:14px;
+  }
+  .profile-card .avatar{margin:0 auto 10px; width:56px; height:56px; font-size:22px; background:rgba(255,255,255,0.25);}
+  .profile-card .name{font-size:17px; font-weight:800;}
+  .profile-card .sub{font-size:12.5px; opacity:.9; margin-top:2px;}
+  .profile-card .switch-link{
+    display:inline-block; margin-top:10px; font-size:12px; color:#fff; text-decoration:underline; cursor:pointer; opacity:.9;
+  }
+
+  .stat-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;}
+  .stat-tile{background:#fff; border-radius:14px; padding:14px; box-shadow:var(--shadow); text-align:center;}
+  .stat-tile .v{font-size:20px; font-weight:800;}
+  .stat-tile .l{font-size:12px; color:var(--muted); margin-top:3px;}
+
+  .heat-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
+  .heat-cell{aspect-ratio:1; border-radius:6px;}
+
+  .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .cal-head button{border:none; background:#fff; border-radius:8px; width:30px; height:30px; box-shadow:var(--shadow); cursor:pointer;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:4px; text-align:center; width:100%;}
+  .cal-dow{font-size:11px; color:var(--muted); font-weight:700; padding-bottom:4px; min-width:0;}
+  .cal-day{
+    aspect-ratio:1; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-size:clamp(10px,3vw,12.5px); font-weight:700; cursor:pointer; border:2px solid transparent; min-width:0;
+  }
+  .cal-day.today{border-color:#111827;}
+  .cal-day.selected{border-color:var(--primary);}
+  .cal-day.empty{visibility:hidden;}
+
+  .rank-row{display:flex; align-items:center; gap:12px; background:#fff; border-radius:14px; padding:11px 14px; margin-bottom:9px; box-shadow:var(--shadow);}
+  .rank-num{width:24px; text-align:center; font-weight:800; color:var(--muted); flex:0 0 auto;}
+  .rank-num.top{color:#f59e0b;}
+  .rank-main{flex:1; min-width:0;}
+  .rank-name{font-size:14px; font-weight:700;}
+  .rank-sub{font-size:11.5px; color:var(--muted);}
+  .rank-score{font-size:14px; font-weight:800; color:var(--primary); flex:0 0 auto;}
+
+  .empty{padding:36px 16px; text-align:center; color:var(--muted); font-size:13.5px;}
+  .muted{color:var(--muted); font-size:12.5px;}
+  select.wide{width:100%;}
+  .pick-card{
+    display:flex; align-items:center; gap:12px; background:#fff; border-radius:14px; padding:13px 14px;
+    margin-bottom:10px; box-shadow:var(--shadow); cursor:pointer;
+  }
+  table.admin-tbl{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px;}
+  table.admin-tbl th, table.admin-tbl td{padding:7px 6px; border-bottom:1px solid var(--border); text-align:left;}
+</style>
+</head>
+<body>
+<div id="shell">
+  <button class="gear-btn" id="gear-btn" title="관리자">⚙</button>
+  <div id="app"></div>
+  <button class="fab" id="fab-btn" style="display:none;">+</button>
+  <nav id="bottom-nav"></nav>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "visionSketchData_v2";
+
+  var CATEGORIES = [
+    { key:"devotion",  label:"경건훈련", icon:"📖", color:"#4f7cff" },
+    { key:"character",  label:"성품훈련", icon:"💗", color:"#ec4899" },
+    { key:"health",    label:"건강관리", icon:"💪", color:"#10b981" },
+    { key:"skill",     label:"역량관리", icon:"🏆", color:"#f59e0b" },
+    { key:"finance",   label:"재무관리", icon:"💰", color:"#8b5cf6" }
+  ];
+
+  function catOf(key){ return CATEGORIES.find(function(c){return c.key===key;}); }
+
+  function uid(){ return Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6); }
+
+  function pad(n){ return n<10 ? "0"+n : ""+n; }
+  function fmtDate(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function todayStr(){ return fmtDate(new Date()); }
+  function formatDateTime(d){
+    var dow = ["일","월","화","수","목","금","토"][d.getDay()];
+    return d.getFullYear()+"년 "+(d.getMonth()+1)+"월 "+d.getDate()+"일 ("+dow+") "+pad(d.getHours())+":"+pad(d.getMinutes());
+  }
+  function addDays(dateStr, delta){
+    var d = new Date(dateStr+"T00:00:00");
+    d.setDate(d.getDate()+delta);
+    return fmtDate(d);
+  }
+  function last30Dates(){
+    var arr = [];
+    for(var i=29;i>=0;i--) arr.push(addDays(todayStr(), -i));
+    return arr;
+  }
+
+  function defaultData(){
+    return {
+      orgs: [], // { id, name }
+      cohorts: [], groups: [], trainees: [],
+      missions: [], // { id, title, categoryKey, traineeId, time, active }
+      completions: {}, // `${missionId}|${date}` -> true
+      currentTraineeId: null,
+      adminMode: false,
+      adminPin: "0000"
+    };
+  }
+
+  var data = load();
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return defaultData();
+      var p = JSON.parse(raw);
+      if(!p.cohorts || !p.missions || !p.completions) return defaultData();
+      if(typeof p.adminMode !== "boolean") p.adminMode = false;
+      if(!p.adminPin) p.adminPin = "0000";
+      if(typeof p.currentTraineeId === "undefined") p.currentTraineeId = null;
+      if(!Array.isArray(p.orgs)){
+        p.orgs = [];
+        if(p.orgName){ p.orgs.push({ id: uid(), name: p.orgName }); }
+      }
+      delete p.orgName;
+      (p.cohorts||[]).forEach(function(c){
+        if(!c.orgId){ c.orgId = p.orgs.length ? p.orgs[0].id : null; }
+      });
+      (p.trainees||[]).forEach(function(t){ if(!t.password) t.password = "1234"; });
+      return p;
+    }catch(e){ return defaultData(); }
+  }
+  function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  // ---------- data helpers ----------
+  function orgNameOf(id){ var o=data.orgs.find(function(x){return x.id===id;}); return o?o.name:"-"; }
+  function orgsOf(){ return data.orgs; }
+  function cohort(id){ return data.cohorts.find(function(x){return x.id===id;}); }
+  function cohortName(id){ var c=data.cohorts.find(function(x){return x.id===id;}); return c?c.name:"-"; }
+  function groupName(id){ var g=data.groups.find(function(x){return x.id===id;}); return g?g.name:"-"; }
+  function cohortsOf(orgId){ return data.cohorts.filter(function(c){return c.orgId===orgId;}); }
+  function groupsOf(cohortId){ return data.groups.filter(function(g){return g.cohortId===cohortId;}); }
+  function trainee(id){ return data.trainees.find(function(t){return t.id===id;}); }
+  function traineeOrgName(t){
+    var c = cohort(t.cohortId);
+    return c ? orgNameOf(c.orgId) : "-";
+  }
+  function suffixLabel(name, suffix){
+    if(!name || name==="-") return "";
+    return (name.slice(-suffix.length)===suffix) ? name : name+suffix;
+  }
+  function traineeFullLabel(t){
+    var parts = [cleanName(traineeOrgName(t)), suffixLabel(cohortName(t.cohortId),"기"), suffixLabel(groupName(t.groupId),"조"), t.name];
+    return parts.filter(Boolean).join(" ");
+  }
+  function traineeOrgGroupLabel(t){
+    var parts = [cleanName(traineeOrgName(t)), suffixLabel(cohortName(t.cohortId),"기"), suffixLabel(groupName(t.groupId),"조")];
+    return parts.filter(Boolean).join(" ");
+  }
+  function cleanName(name){ return (!name || name==="-") ? "" : name; }
+  function avatarHtml(t, styleStr){
+    var style = styleStr ? ' style="'+styleStr+'"' : '';
+    if(t.photo) return '<div class="avatar"'+style+'><img src="'+t.photo+'"></div>';
+    return '<div class="avatar"'+style+'>'+esc(t.name.charAt(0))+'</div>';
+  }
+
+  function missionsFor(traineeId, activeOnly){
+    return data.missions.filter(function(m){
+      if(m.traineeId!==traineeId) return false;
+      if(activeOnly && !m.active) return false;
+      return true;
+    });
+  }
+  function isDone(missionId, dateStr){ return !!data.completions[missionId+"|"+dateStr]; }
+  function toggleDone(missionId, dateStr){
+    var key = missionId+"|"+dateStr;
+    if(data.completions[key]) delete data.completions[key];
+    else data.completions[key] = true;
+    save();
+  }
+
+  function dailyRate(traineeId, dateStr){
+    var ms = missionsFor(traineeId, true);
+    if(!ms.length) return null;
+    var done = ms.filter(function(m){ return isDone(m.id, dateStr); }).length;
+    return done / ms.length;
+  }
+
+  function categoryRate30(traineeId, catKey){
+    var ms = missionsFor(traineeId, true).filter(function(m){return m.categoryKey===catKey;});
+    if(!ms.length) return null;
+    var dates = last30Dates();
+    var done = 0;
+    ms.forEach(function(m){ dates.forEach(function(d){ if(isDone(m.id,d)) done++; }); });
+    return done / (ms.length * dates.length);
+  }
+
+  function overallRate30(traineeId){
+    return periodRate(traineeId, 30);
+  }
+
+  function periodRate(traineeId, days){
+    var ms = missionsFor(traineeId, true);
+    if(!ms.length) return null;
+    var dates = [];
+    for(var i=0;i<days;i++) dates.push(addDays(todayStr(), -i));
+    var done = 0;
+    ms.forEach(function(m){ dates.forEach(function(d){ if(isDone(m.id,d)) done++; }); });
+    return done / (ms.length * dates.length);
+  }
+
+  function streakDays(traineeId){
+    var ms = missionsFor(traineeId, true);
+    if(!ms.length) return 0;
+    var count = 0, d = todayStr();
+    while(true){
+      var r = dailyRate(traineeId, d);
+      if(r===1){ count++; d = addDays(d,-1); } else break;
+      if(count>3650) break;
+    }
+    return count;
+  }
+
+  function totalCompletions(traineeId){
+    var ids = missionsFor(traineeId, false).map(function(m){return m.id;});
+    var n = 0;
+    Object.keys(data.completions).forEach(function(k){
+      var missionId = k.slice(0, k.lastIndexOf("|"));
+      if(ids.indexOf(missionId)>-1 && data.completions[k]) n++;
+    });
+    return n;
+  }
+
+  function monthCompletions(traineeId, year, month){
+    var ids = missionsFor(traineeId, false).map(function(m){return m.id;});
+    var prefix = year+"-"+pad(month+1);
+    var n = 0;
+    Object.keys(data.completions).forEach(function(k){
+      var idx = k.lastIndexOf("|");
+      var missionId = k.slice(0, idx);
+      var date = k.slice(idx+1);
+      if(ids.indexOf(missionId)>-1 && date.indexOf(prefix)===0 && data.completions[k]) n++;
+    });
+    return n;
+  }
+
+  function badgeLevel(total){
+    if(total>=100) return "L5";
+    if(total>=60) return "L4";
+    if(total>=30) return "L3";
+    if(total>=10) return "L2";
+    return "L1";
+  }
+
+  function rateColor(r){
+    if(r===null) return "#e5e7eb";
+    if(r>=0.8) return "#10b981";
+    if(r>=0.5) return "#f59e0b";
+    if(r>0) return "#f87171";
+    return "#e5e7eb";
+  }
+
+  // ---------- routing ----------
+  var TABS = [
+    { key:"home",     label:"홈",   icon:"🏠" },
+    { key:"missions", label:"미션", icon:"✅" },
+    { key:"calendar", label:"달력", icon:"📅" },
+    { key:"ranking",  label:"랭킹", icon:"🏆" },
+    { key:"my",       label:"MY",   icon:"👤" }
+  ];
+  var currentRoute = "home";
+  var lastTab = "home";
+  var missionFilter = "all";
+  var loginSel = { orgId:"", cohortId:"", groupId:"", traineeId:"" };
+  function resetLoginSel(){ loginSel = { orgId:"", cohortId:"", groupId:"", traineeId:"" }; }
+  var calYear, calMonth, calSelectedDate;
+  (function(){ var d=new Date(); calYear=d.getFullYear(); calMonth=d.getMonth(); calSelectedDate=todayStr(); })();
+  var newMissionCategory = null;
+  var newMissionSelectedTrainees = [];
+  var newMissionMode = "self"; // "self" | "admin"
+
+  function ensureCurrentTrainee(){
+    if(data.currentTraineeId && trainee(data.currentTraineeId)) return true;
+    return false;
+  }
+
+  function goBack(){ currentRoute = lastTab; renderAll(); }
+
+  function switchTab(key){
+    currentRoute = key; lastTab = key; renderAll();
+  }
+
+  function openAdmin(){
+    if(!data.adminMode){
+      var pin = prompt("관리자 PIN을 입력하세요.");
+      if(pin===null) return;
+      if(pin!==data.adminPin){ alert("PIN이 올바르지 않습니다."); return; }
+      data.adminMode = true; save();
+    }
+    currentRoute = "admin"; renderAll();
+  }
+
+  function openNewMission(){
+    if(!ensureCurrentTrainee()){
+      alert("먼저 본인 프로필을 선택하세요.");
+      currentRoute = "login"; renderAll();
+      return;
+    }
+    newMissionMode = "self";
+    newMissionCategory = CATEGORIES[0].key;
+    newMissionSelectedTrainees = [];
+    currentRoute = "newMission"; renderAll();
+  }
+
+  function openNewMissionAdmin(){
+    newMissionMode = "admin";
+    newMissionCategory = CATEGORIES[0].key;
+    newMissionSelectedTrainees = [];
+    currentRoute = "newMission"; renderAll();
+  }
+
+  function renderAll(){
+    renderBottomNav();
+    var mainTabs = ["home","missions","calendar","ranking","my"];
+    document.getElementById("bottom-nav").style.display = mainTabs.indexOf(currentRoute)>-1 ? "flex" : "none";
+    document.getElementById("fab-btn").style.display = (currentRoute==="missions" && ensureCurrentTrainee()) ? "flex" : "none";
+
+    var app = document.getElementById("app");
+    if(!ensureCurrentTrainee() && currentRoute!=="admin" && currentRoute!=="login"){
+      app.innerHTML = renderLoginGate();
+    } else if(currentRoute==="home") app.innerHTML = renderHome();
+    else if(currentRoute==="missions") app.innerHTML = renderMissions();
+    else if(currentRoute==="calendar") app.innerHTML = renderCalendar();
+    else if(currentRoute==="ranking") app.innerHTML = renderRanking();
+    else if(currentRoute==="my") app.innerHTML = renderMy();
+    else if(currentRoute==="login") app.innerHTML = renderLogin();
+    else if(currentRoute==="newMission") app.innerHTML = renderNewMission();
+    else if(currentRoute==="admin") app.innerHTML = renderAdmin();
+
+    bindEvents();
+  }
+
+  function renderBottomNav(){
+    var nav = document.getElementById("bottom-nav");
+    nav.innerHTML = "";
+    TABS.forEach(function(t){
+      var btn = document.createElement("button");
+      btn.className = (t.key===currentRoute) ? "active" : "";
+      btn.innerHTML = '<span class="ic">'+t.icon+'</span><span>'+t.label+'</span>';
+      btn.onclick = function(){ switchTab(t.key); };
+      nav.appendChild(btn);
+    });
+  }
+
+  // ---------- Login ----------
+  function renderLoginGate(){
+    if(!data.trainees.length){
+      return '<div class="page-header"><h2>비전 스케치</h2></div>' +
+        '<div class="card empty">등록된 훈련생이 없습니다.<br>관리자 모드에서 기수·조·훈련생을 먼저 등록해주세요.<br><br>' +
+        '<button class="btn" data-action="go-admin">관리자 모드로 시작하기</button></div>';
+    }
+    return renderLogin();
+  }
+
+  function renderLogin(){
+    if(!data.trainees.length){
+      return renderLoginGate();
+    }
+
+    var orgOpts = data.orgs.map(function(o){
+      return '<option value="'+o.id+'" '+(loginSel.orgId===o.id?"selected":"")+'>'+esc(o.name)+'</option>';
+    }).join("");
+
+    var cohortOpts = "";
+    if(loginSel.orgId){
+      cohortOpts = cohortsOf(loginSel.orgId).map(function(c){
+        return '<option value="'+c.id+'" '+(loginSel.cohortId===c.id?"selected":"")+'>'+esc(c.name)+'</option>';
+      }).join("");
+    }
+
+    var groupOpts = "";
+    if(loginSel.cohortId){
+      groupOpts = groupsOf(loginSel.cohortId).map(function(g){
+        return '<option value="'+g.id+'" '+(loginSel.groupId===g.id?"selected":"")+'>'+esc(g.name)+'</option>';
+      }).join("");
+    }
+
+    var traineeOpts = "";
+    if(loginSel.groupId){
+      traineeOpts = data.trainees.filter(function(t){return t.groupId===loginSel.groupId;}).map(function(t){
+        return '<option value="'+t.id+'" '+(loginSel.traineeId===t.id?"selected":"")+'>'+esc(t.name)+'</option>';
+      }).join("");
+    }
+
+    var body =
+      '<label class="field-label">1. 단체 선택</label>' +
+      '<select data-action="login-pick-org"><option value="">단체 선택</option>'+orgOpts+'</select>';
+
+    if(loginSel.orgId){
+      body +=
+        '<label class="field-label">2. 기수 선택</label>' +
+        '<select data-action="login-pick-cohort"><option value="">기수 선택</option>'+cohortOpts+'</select>';
+    }
+    if(loginSel.cohortId){
+      body +=
+        '<label class="field-label">3. 조 선택</label>' +
+        '<select data-action="login-pick-group"><option value="">조 선택</option>'+groupOpts+'</select>';
+    }
+    if(loginSel.groupId){
+      body +=
+        '<label class="field-label">4. 이름 선택</label>' +
+        '<select data-action="login-pick-trainee"><option value="">이름 선택</option>'+traineeOpts+'</select>';
+    }
+    if(loginSel.traineeId){
+      body +=
+        '<label class="field-label">비밀번호</label>' +
+        '<input type="password" id="login-password" placeholder="비밀번호를 입력하세요">' +
+        '<button class="btn block" data-action="do-login">로그인</button>' +
+        '<div class="muted" style="margin-top:10px;">비밀번호를 잊었다면 관리자에게 문의하세요.</div>';
+    }
+
+    return '<div class="page-header">' +
+      (data.currentTraineeId ? '<button class="back-btn" data-action="back">←</button>' : '') +
+      '<h2>로그인</h2></div>' +
+      '<div class="card">' + body + '</div>';
+  }
+
+  // ---------- Home ----------
+  function renderHome(){
+    var t = trainee(data.currentTraineeId);
+    var today = todayStr();
+    var ms = missionsFor(t.id, true);
+    var doneCount = ms.filter(function(m){return isDone(m.id, today);}).length;
+    var total = ms.length;
+    var pct = total ? Math.round(doneCount/total*100) : 0;
+    var remain = total - doneCount;
+
+    var areaRows = CATEGORIES.map(function(c){
+      var r = categoryRate30(t.id, c.key);
+      var pctv = r===null ? null : Math.round(r*100);
+      return '<div class="area-row">' +
+        '<div class="area-icon" style="background:'+c.color+'">'+c.icon+'</div>' +
+        '<div class="area-main"><div class="area-name">'+esc(c.label)+'</div>' +
+        '<div class="bar-wrap"><div class="bar-fill" style="width:'+(pctv||0)+'%;background:'+c.color+'"></div></div></div>' +
+        '<div class="area-pct">'+(pctv===null?"-":pctv+"%")+'</div>' +
+      '</div>';
+    }).join("");
+
+    return '' +
+    '<div class="home-header">' +
+      '<div class="greet"><div class="greet-text">👋 안녕하세요, '+esc(t.name)+'님</div><div>🔔</div></div>' +
+      '<div class="date-time" id="home-datetime">'+formatDateTime(new Date())+'</div>' +
+      '<div class="mission-card">' +
+        '<div class="label">오늘의 미션 달성률</div>' +
+        '<div class="pct">'+pct+'%</div>' +
+        '<div class="sub">'+doneCount+' / '+total+' 완료 · '+(remain>0?remain+'개 남음':'모두 완료!')+'</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card"><h3>5대 훈련 영역 (최근 30일 평균)</h3>'+areaRows+'</div>';
+  }
+
+  // ---------- Missions ----------
+  function renderMissionItem(m, today){
+    var c = catOf(m.categoryKey);
+    var done = isDone(m.id, today);
+    return '<div class="mission-item">' +
+      '<div class="check-circle '+(done?"done":"")+'" style="'+(done?"background:"+c.color+";":"")+'" data-action="toggle-mission" data-id="'+m.id+'">'+(done?"✓":"")+'</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div class="mission-title '+(done?"done":"")+'">'+esc(m.title)+'</div>' +
+        '<div class="mission-meta"><span class="badge-pill" style="background:'+c.color+'">'+esc(c.label)+'</span>' +
+        (m.time ? '<span>'+esc(m.time)+'</span>' : '') +
+      '</div></div>' +
+      '<button class="mission-del" data-action="del-own-mission" data-id="'+m.id+'">×</button>' +
+    '</div>';
+  }
+
+  function renderMissions(){
+    var today = todayStr();
+    var chips = ['<button class="chip '+(missionFilter==="all"?"active":"")+'" data-action="filter-mission" data-cat="all">전체</button>']
+      .concat(CATEGORIES.map(function(c){
+        return '<button class="chip '+(missionFilter===c.key?"active":"")+'" data-action="filter-mission" data-cat="'+c.key+'">'+esc(c.label)+'</button>';
+      })).join("");
+
+    var myMissions = data.missions.filter(function(m){
+      return m.traineeId===data.currentTraineeId && m.active;
+    });
+
+    var itemsHtml;
+    if(!myMissions.length){
+      itemsHtml = '<div class="card empty">등록된 내 미션이 없습니다.<br>+ 버튼을 눌러 미션을 등록해보세요.</div>';
+    } else if(missionFilter==="all"){
+      var sections = CATEGORIES.map(function(c){
+        var ms = myMissions.filter(function(m){return m.categoryKey===c.key;});
+        if(!ms.length) return "";
+        return '<div class="section-title" style="color:'+c.color+';">'+c.icon+' '+esc(c.label)+'</div>' +
+          ms.map(function(m){ return renderMissionItem(m, today); }).join("");
+      }).join("");
+      itemsHtml = sections || '<div class="card empty">등록된 내 미션이 없습니다.</div>';
+    } else {
+      var list = myMissions.filter(function(m){ return m.categoryKey===missionFilter; });
+      itemsHtml = list.length
+        ? list.map(function(m){ return renderMissionItem(m, today); }).join("")
+        : '<div class="card empty">해당 영역에 등록된 내 미션이 없습니다.</div>';
+    }
+
+    return '<div class="page-header"><h2>오늘의 미션</h2></div>' +
+      '<div class="chip-row">'+chips+'</div>' + itemsHtml;
+  }
+
+  // ---------- Calendar ----------
+  function renderCalendar(){
+    var t = trainee(data.currentTraineeId);
+    var first = new Date(calYear, calMonth, 1);
+    var startDow = first.getDay();
+    var daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+
+    var cells = "";
+    for(var i=0;i<startDow;i++) cells += '<div class="cal-day empty"></div>';
+    for(var d=1; d<=daysInMonth; d++){
+      var ds = calYear+"-"+pad(calMonth+1)+"-"+pad(d);
+      var r = dailyRate(t.id, ds);
+      var color = rateColor(r);
+      var isToday = ds===todayStr();
+      var isSel = ds===calSelectedDate;
+      cells += '<div class="cal-day '+(isToday?"today":"")+' '+(isSel?"selected":"")+'" style="background:'+color+';color:'+(r&&r>=0.5?"#fff":"#374151")+'" data-action="pick-date" data-date="'+ds+'">'+d+'</div>';
+    }
+    var dows = ["일","월","화","수","목","금","토"].map(function(x){return '<div class="cal-dow">'+x+'</div>';}).join("");
+
+    var ms = missionsFor(t.id, true);
+    var listHtml = ms.length ? ms.map(function(m){
+      var c = catOf(m.categoryKey);
+      var done = isDone(m.id, calSelectedDate);
+      return '<div class="mission-item">' +
+        '<div class="check-circle '+(done?"done":"")+'" style="'+(done?"background:"+c.color+";":"")+'">'+(done?"✓":"")+'</div>' +
+        '<div style="flex:1;"><div class="mission-title '+(done?"done":"")+'">'+esc(m.title)+'</div>' +
+        '<div class="mission-meta"><span class="badge-pill" style="background:'+c.color+'">'+esc(c.label)+'</span>' +
+        '<span>'+(done?"완료":"미완료")+'</span></div></div>' +
+      '</div>';
+    }).join("") : '<div class="card empty">등록된 미션이 없습니다.</div>';
+
+    return '<div class="page-header"><h2>달성 달력</h2></div>' +
+    '<div class="card">' +
+      '<div class="cal-head"><button data-action="cal-prev">‹</button>' +
+      '<div style="font-weight:800;">'+calYear+'년 '+(calMonth+1)+'월</div>' +
+      '<button data-action="cal-next">›</button></div>' +
+      '<div class="cal-grid">'+dows+cells+'</div>' +
+    '</div>' +
+    '<div class="section-title" style="font-weight:800; font-size:13.5px; margin:6px 0 10px;">'+calSelectedDate+' 미션</div>' +
+    listHtml;
+  }
+
+  // ---------- Ranking ----------
+  var RANK_PERIODS = [
+    { key:"day",   label:"일별",  days:1 },
+    { key:"week",  label:"주별",  days:7 },
+    { key:"month", label:"월별",  days:30 }
+  ];
+  var rankingPeriod = "day";
+
+  function renderRanking(){
+    var me = trainee(data.currentTraineeId);
+    var period = RANK_PERIODS.find(function(p){return p.key===rankingPeriod;});
+
+    var chips = RANK_PERIODS.map(function(p){
+      return '<button class="chip '+(rankingPeriod===p.key?"active":"")+'" data-action="filter-ranking" data-period="'+p.key+'">'+p.label+'</button>';
+    }).join("");
+
+    var members = data.trainees.filter(function(t){ return t.groupId===me.groupId; });
+    var rows = members.map(function(t){
+      return { t:t, rate: periodRate(t.id, period.days) };
+    }).sort(function(a,b){
+      var ar = a.rate===null ? -1 : a.rate, br = b.rate===null ? -1 : b.rate;
+      return br - ar;
+    });
+
+    var html = rows.length ? rows.map(function(r, idx){
+      var pct = r.rate===null ? "-" : Math.round(r.rate*100)+"%";
+      var isMe = r.t.id===me.id;
+      return '<div class="rank-row">' +
+        '<div class="rank-num '+(idx<3?"top":"")+'">'+(idx+1)+'</div>' +
+        avatarHtml(r.t, "width:38px;height:38px;font-size:14px;") +
+        '<div class="rank-main"><div class="rank-name">'+esc(r.t.name)+(isMe?' <span class="muted">(나)</span>':'')+'</div>' +
+        '<div class="rank-sub">'+esc(traineeOrgGroupLabel(r.t))+'</div></div>' +
+        '<div class="rank-score">'+pct+'</div>' +
+      '</div>';
+    }).join("") : '<div class="card empty">같은 조에 등록된 훈련생이 없습니다.</div>';
+
+    return '<div class="page-header"><h2>조원 랭킹</h2></div>' +
+      '<div class="chip-row">'+chips+'</div>' + html;
+  }
+
+  // ---------- MY ----------
+  function renderMy(){
+    var t = trainee(data.currentTraineeId);
+    var total = totalCompletions(t.id);
+    var streak = streakDays(t.id);
+    var thisMonth = monthCompletions(t.id, calYear, calMonth);
+    var overall = overallRate30(t.id);
+    var badge = badgeLevel(total);
+
+    var areaRows = CATEGORIES.map(function(c){
+      var r = categoryRate30(t.id, c.key);
+      var pctv = r===null ? null : Math.round(r*100);
+      return '<div class="area-row">' +
+        '<div class="area-icon" style="background:'+c.color+'">'+c.icon+'</div>' +
+        '<div class="area-main"><div class="area-name">'+esc(c.label)+'</div>' +
+        '<div class="bar-wrap"><div class="bar-fill" style="width:'+(pctv||0)+'%;background:'+c.color+'"></div></div></div>' +
+        '<div class="area-pct">'+(pctv===null?"-":pctv+"%")+'</div>' +
+      '</div>';
+    }).join("");
+
+    var heatCells = "";
+    for(var i=34;i>=0;i--){
+      var ds = addDays(todayStr(), -i);
+      var r = dailyRate(t.id, ds);
+      heatCells += '<div class="heat-cell" style="background:'+rateColor(r)+'" title="'+ds+'"></div>';
+    }
+
+    return '' +
+    '<div class="page-header"><h2>MY 페이지</h2></div>' +
+    '<div class="profile-card">' +
+      avatarHtml(t, "") +
+      '<label for="photo-upload-input" class="switch-link" style="display:inline-block;">사진 변경</label>' +
+      (t.photo ? '<span class="switch-link" data-action="remove-photo" style="margin-left:10px;">사진 삭제</span>' : '') +
+      '<input type="file" id="photo-upload-input" data-action="upload-photo" accept="image/*" style="display:none;">' +
+      '<div class="name" style="margin-top:8px;">'+esc(t.name)+'</div>' +
+      '<div class="sub">'+esc(traineeOrgGroupLabel(t))+' · 배지 '+badge+'</div>' +
+      '<div class="switch-link" data-action="logout">로그아웃</div>' +
+    '</div>' +
+    '<div class="stat-grid">' +
+      '<div class="stat-tile"><div class="v">'+streak+'일</div><div class="l">연속 달성</div></div>' +
+      '<div class="stat-tile"><div class="v">'+thisMonth+'회</div><div class="l">이번 달 완료</div></div>' +
+      '<div class="stat-tile"><div class="v">'+total+'회</div><div class="l">누적 완료</div></div>' +
+      '<div class="stat-tile"><div class="v">'+(overall===null?"-":Math.round(overall*100)+"%")+'</div><div class="l">최근 30일 평균 달성률</div></div>' +
+    '</div>' +
+    '<div class="card"><h3>영역별 완료 비율 (최근 30일)</h3>'+areaRows+'</div>' +
+    '<div class="card"><h3>연속 달성 캘린더 (최근 5주)</h3><div class="heat-grid">'+heatCells+'</div></div>' +
+    '<div class="card"><h3>비밀번호 변경</h3>' +
+      '<label class="field-label">현재 비밀번호</label>' +
+      '<input type="password" id="cur-password">' +
+      '<label class="field-label">새 비밀번호</label>' +
+      '<input type="password" id="new-password">' +
+      '<button class="btn secondary block" data-action="change-own-password">비밀번호 변경</button>' +
+    '</div>';
+  }
+
+  // ---------- New mission (self / admin) ----------
+  function renderNewMission(){
+    var iconOpts = CATEGORIES.map(function(c){
+      return '<div class="icon-choice '+(newMissionCategory===c.key?"selected":"")+'" data-action="pick-new-cat" data-cat="'+c.key+'">' +
+        '<div class="icon-opt" style="background:'+c.color+'">'+c.icon+'</div>' +
+        '<div class="icon-label">'+esc(c.label)+'</div>' +
+      '</div>';
+    }).join("");
+
+    var traineeSection = "";
+    if(newMissionMode==="admin"){
+      var traineeList = "";
+      data.cohorts.forEach(function(cohort){
+        var gs = groupsOf(cohort.id);
+        gs.forEach(function(g){
+          var ts = data.trainees.filter(function(t){return t.groupId===g.id;});
+          if(!ts.length) return;
+          traineeList += '<div class="group-label">'+esc(cohort.name)+' · '+esc(g.name)+'</div>';
+          ts.forEach(function(t){
+            var checked = newMissionSelectedTrainees.indexOf(t.id)>-1;
+            traineeList += '<div class="trainee-pick"><input type="checkbox" data-action="pick-new-trainee" data-id="'+t.id+'" '+(checked?"checked":"")+'><div>'+esc(t.name)+'</div></div>';
+          });
+        });
+      });
+      if(!traineeList) traineeList = '<div class="muted">등록된 훈련생이 없습니다. 관리자 페이지에서 먼저 등록하세요.</div>';
+      traineeSection = '<label class="field-label">훈련생 선택</label>' + traineeList;
+    } else {
+      var me = trainee(data.currentTraineeId);
+      traineeSection = '<div class="muted" style="margin-top:14px;">등록하는 미션은 <b>'+esc(me?me.name:"")+'</b>님의 개인 미션으로 추가됩니다.</div>';
+    }
+
+    return '<div class="page-header"><button class="back-btn" data-action="back">←</button><h2>'+(newMissionMode==="admin"?"새 미션 등록 (관리자)":"내 미션 등록")+'</h2></div>' +
+    '<div class="card">' +
+      '<label class="field-label">미션 제목</label>' +
+      '<input type="text" id="new-mission-title" placeholder="예: 새벽기도">' +
+
+      '<label class="field-label">훈련 영역</label>' +
+      '<div class="icon-select">'+iconOpts+'</div>' +
+
+      '<label class="field-label">시간 (선택)</label>' +
+      '<input type="text" id="new-mission-time" placeholder="예: 06:00">' +
+
+      traineeSection +
+
+      '<div class="toggle"><label class="switch"><input type="checkbox" id="new-mission-active" checked><span class="slider"></span></label><div class="muted">미션 활성화 상태</div></div>' +
+
+      '<button class="btn block" data-action="submit-new-mission">미션 등록하기</button>' +
+    '</div>';
+  }
+
+  // ---------- Admin ----------
+  function renderAdmin(){
+    var orgOptions = data.orgs.map(function(o){ return '<option value="'+o.id+'">'+esc(o.name)+'</option>'; }).join("");
+    var cohortOptions = data.cohorts.map(function(c){
+      return '<option value="'+c.id+'">'+esc(orgNameOf(c.orgId))+' · '+esc(c.name)+'</option>';
+    }).join("");
+
+    var orgRows = data.orgs.map(function(o){
+      return '<tr><td>'+esc(o.name)+'</td><td>'+cohortsOf(o.id).length+'</td>' +
+        '<td><button class="btn danger" data-action="del-org" data-id="'+o.id+'">삭제</button></td></tr>';
+    }).join("");
+
+    var cohortRows = data.cohorts.map(function(c){
+      return '<tr><td>'+esc(orgNameOf(c.orgId))+'</td><td>'+esc(c.name)+'</td><td>'+groupsOf(c.id).length+'</td>' +
+        '<td>'+data.trainees.filter(function(t){return t.cohortId===c.id;}).length+'</td>' +
+        '<td><button class="btn danger" data-action="del-cohort" data-id="'+c.id+'">삭제</button></td></tr>';
+    }).join("");
+
+    var groupRows = data.groups.map(function(g){
+      return '<tr><td>'+esc(cohortName(g.cohortId))+'</td><td>'+esc(g.name)+'</td>' +
+        '<td>'+data.trainees.filter(function(t){return t.groupId===g.id;}).length+'</td>' +
+        '<td><button class="btn danger" data-action="del-group" data-id="'+g.id+'">삭제</button></td></tr>';
+    }).join("");
+
+    var traineeRows = data.trainees.map(function(t){
+      return '<tr><td>'+esc(cohortName(t.cohortId))+'</td><td>'+esc(groupName(t.groupId))+'</td><td>'+esc(t.name)+'</td>' +
+        '<td><button class="btn secondary" data-action="reset-trainee-password" data-id="'+t.id+'">비번 초기화</button></td>' +
+        '<td><button class="btn danger" data-action="del-trainee" data-id="'+t.id+'">삭제</button></td></tr>';
+    }).join("");
+
+    var missionRows = data.missions.map(function(m){
+      var c = catOf(m.categoryKey); var tr = trainee(m.traineeId);
+      return '<tr><td>'+esc(m.title)+'</td><td>'+esc(c?c.label:"-")+'</td><td>'+esc(tr?tr.name:"-")+'</td>' +
+        '<td><input type="checkbox" data-action="toggle-mission-active" data-id="'+m.id+'" '+(m.active?"checked":"")+'></td>' +
+        '<td><button class="btn danger" data-action="del-mission" data-id="'+m.id+'">삭제</button></td></tr>';
+    }).join("");
+
+    return '<div class="page-header"><button class="back-btn" data-action="back">←</button><h2>관리자 설정</h2></div>' +
+
+    '<div class="card"><h3>단체 등록</h3>' +
+      '<div class="row"><input type="text" id="new-org-name" placeholder="예: OO선교회" style="flex:1;">' +
+      '<button class="btn" data-action="add-org">추가</button></div>' +
+      '<div class="muted" style="margin-top:8px;">등록한 단체는 로그인·MY·랭킹 화면에 "단체명 기수 조" 형식으로 표시됩니다.</div>' +
+      (data.orgs.length ? '<table class="admin-tbl"><tr><th>단체명</th><th>기수 수</th><th></th></tr>'+orgRows+'</table>' : '<div class="muted">등록된 단체가 없습니다.</div>') +
+    '</div>' +
+
+    '<div class="card"><h3>관리자 모드</h3>' +
+      '<div class="row"><button class="btn danger" data-action="admin-off">관리자 모드 끄기</button></div>' +
+      '<label class="field-label">관리자 PIN 변경</label>' +
+      '<div class="row"><input type="text" id="new-admin-pin" placeholder="새 PIN" style="flex:1;">' +
+      '<button class="btn secondary" data-action="change-pin">변경</button></div>' +
+    '</div>' +
+
+    '<div class="card"><h3>기수 등록</h3>' +
+      '<div class="row"><select id="new-cohort-org"><option value="">단체 선택</option>'+orgOptions+'</select></div>' +
+      '<div class="row" style="margin-top:8px;"><input type="text" id="new-cohort-name" placeholder="예: 12기" style="flex:1;">' +
+      '<button class="btn" data-action="add-cohort">추가</button></div>' +
+      (!data.orgs.length ? '<div class="muted" style="margin-top:8px;">먼저 단체를 등록하세요.</div>' : '') +
+      (data.cohorts.length ? '<table class="admin-tbl"><tr><th>단체</th><th>기수</th><th>조</th><th>인원</th><th></th></tr>'+cohortRows+'</table>' : '<div class="muted">등록된 기수가 없습니다.</div>') +
+    '</div>' +
+
+    '<div class="card"><h3>조 등록</h3>' +
+      '<div class="row"><select id="new-group-cohort"><option value="">기수 선택</option>'+cohortOptions+'</select></div>' +
+      '<div class="row" style="margin-top:8px;"><input type="text" id="new-group-name" placeholder="예: 1조" style="flex:1;">' +
+      '<button class="btn" data-action="add-group">추가</button></div>' +
+      (data.groups.length ? '<table class="admin-tbl"><tr><th>기수</th><th>조</th><th>인원</th><th></th></tr>'+groupRows+'</table>' : '<div class="muted">등록된 조가 없습니다.</div>') +
+    '</div>' +
+
+    '<div class="card"><h3>훈련생 등록</h3>' +
+      '<div class="row"><select id="new-trainee-cohort"><option value="">기수 선택</option>'+cohortOptions+'</select></div>' +
+      '<div class="row" style="margin-top:8px;"><select id="new-trainee-group"><option value="">조 선택</option></select></div>' +
+      '<div class="row" style="margin-top:8px;"><input type="text" id="new-trainee-name" placeholder="이름" style="flex:1;"></div>' +
+      '<div class="row" style="margin-top:8px;"><input type="text" id="new-trainee-password" placeholder="초기 비밀번호 (예: 1234)" style="flex:1;">' +
+      '<button class="btn" data-action="add-trainee">추가</button></div>' +
+      (data.trainees.length ? '<table class="admin-tbl"><tr><th>기수</th><th>조</th><th>이름</th><th></th><th></th></tr>'+traineeRows+'</table>' : '<div class="muted">등록된 훈련생이 없습니다.</div>') +
+    '</div>' +
+
+    '<div class="card"><h3>미션 관리</h3>' +
+      '<div class="row"><button class="btn secondary" data-action="go-new-mission">+ 새 미션 등록</button></div>' +
+      (data.missions.length ? '<table class="admin-tbl"><tr><th>제목</th><th>영역</th><th>훈련생</th><th>활성</th><th></th></tr>'+missionRows+'</table>' : '<div class="muted">등록된 미션이 없습니다.</div>') +
+    '</div>';
+  }
+
+  // ---------- events ----------
+  function bindEvents(){
+    document.getElementById("gear-btn").onclick = openAdmin;
+    document.getElementById("fab-btn").onclick = openNewMission;
+
+    var app = document.getElementById("app");
+    var newTraineeCohortSel = document.getElementById("new-trainee-cohort");
+    if(newTraineeCohortSel){
+      newTraineeCohortSel.addEventListener("change", function(){
+        var gs = groupsOf(this.value);
+        document.getElementById("new-trainee-group").innerHTML = '<option value="">조 선택</option>' +
+          gs.map(function(g){ return '<option value="'+g.id+'">'+esc(g.name)+'</option>'; }).join("");
+      });
+    }
+
+    app.onclick = onClick;
+    app.onchange = onChange;
+  }
+
+  function onChange(e){
+    var t = e.target;
+    var action = t.dataset.action;
+    if(action==="toggle-mission-active"){
+      var m = data.missions.find(function(x){return x.id===t.dataset.id;});
+      if(m){ m.active = t.checked; save(); renderAll(); }
+    } else if(action==="upload-photo"){
+      var file = t.files && t.files[0];
+      if(!file) return;
+      resizeImageToDataUrl(file, 240, function(dataUrl){
+        var me = trainee(data.currentTraineeId);
+        if(me){ me.photo = dataUrl; save(); renderAll(); }
+      });
+    } else if(action==="login-pick-org"){
+      loginSel.orgId = t.value; loginSel.cohortId=""; loginSel.groupId=""; loginSel.traineeId="";
+      renderAll();
+    } else if(action==="login-pick-cohort"){
+      loginSel.cohortId = t.value; loginSel.groupId=""; loginSel.traineeId="";
+      renderAll();
+    } else if(action==="login-pick-group"){
+      loginSel.groupId = t.value; loginSel.traineeId="";
+      renderAll();
+    } else if(action==="login-pick-trainee"){
+      loginSel.traineeId = t.value;
+      renderAll();
+    }
+  }
+
+  function resizeImageToDataUrl(file, maxSize, callback){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var img = new Image();
+      img.onload = function(){
+        var scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        var canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        callback(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function onClick(e){
+    var t = e.target.closest("[data-action]");
+    if(!t) return;
+    var action = t.dataset.action;
+
+    if(action==="go-admin"){ openAdmin(); }
+    else if(action==="back"){ goBack(); }
+    else if(action==="do-login"){
+      var pwInput = document.getElementById("login-password");
+      var pw = pwInput.value;
+      var tr = trainee(loginSel.traineeId);
+      if(!tr){ alert("이름을 선택하세요."); return; }
+      if((tr.password||"") !== pw){ alert("비밀번호가 올바르지 않습니다."); return; }
+      data.currentTraineeId = tr.id; save();
+      resetLoginSel();
+      currentRoute = "home"; lastTab = "home"; renderAll();
+    }
+    else if(action==="logout"){
+      data.currentTraineeId = null; save();
+      resetLoginSel();
+      currentRoute = "login"; renderAll();
+    }
+    else if(action==="remove-photo"){
+      var meRm = trainee(data.currentTraineeId);
+      if(meRm){ delete meRm.photo; save(); renderAll(); }
+    }
+    else if(action==="change-own-password"){
+      var t2 = trainee(data.currentTraineeId);
+      var curPw = document.getElementById("cur-password").value;
+      var newPw = document.getElementById("new-password").value;
+      if((t2.password||"") !== curPw){ alert("현재 비밀번호가 올바르지 않습니다."); return; }
+      if(!newPw){ alert("새 비밀번호를 입력하세요."); return; }
+      t2.password = newPw; save();
+      alert("비밀번호가 변경되었습니다.");
+      renderAll();
+    }
+
+    else if(action==="filter-mission"){ missionFilter = t.dataset.cat; renderAll(); }
+    else if(action==="filter-ranking"){ rankingPeriod = t.dataset.period; renderAll(); }
+    else if(action==="toggle-mission"){
+      toggleDone(t.dataset.id, todayStr()); renderAll();
+    }
+
+    else if(action==="cal-prev"){
+      calMonth--; if(calMonth<0){calMonth=11; calYear--;} renderAll();
+    }
+    else if(action==="cal-next"){
+      calMonth++; if(calMonth>11){calMonth=0; calYear++;} renderAll();
+    }
+    else if(action==="pick-date"){ calSelectedDate = t.dataset.date; renderAll(); }
+
+    else if(action==="go-new-mission"){ openNewMissionAdmin(); }
+    else if(action==="del-own-mission"){
+      if(!confirm("이 미션과 완료 기록을 삭제할까요?")) return;
+      var ownId = t.dataset.id;
+      var m2 = data.missions.find(function(x){return x.id===ownId;});
+      if(!m2 || m2.traineeId!==data.currentTraineeId) return;
+      Object.keys(data.completions).forEach(function(k){
+        if(k.slice(0, k.lastIndexOf("|"))===ownId) delete data.completions[k];
+      });
+      data.missions = data.missions.filter(function(m){return m.id!==ownId;});
+      save(); renderAll();
+    }
+
+    else if(action==="pick-new-cat"){ newMissionCategory = t.dataset.cat; renderAll(); }
+    else if(action==="pick-new-trainee"){
+      var id = t.dataset.id;
+      var idx = newMissionSelectedTrainees.indexOf(id);
+      if(t.checked && idx===-1) newMissionSelectedTrainees.push(id);
+      if(!t.checked && idx>-1) newMissionSelectedTrainees.splice(idx,1);
+    }
+    else if(action==="submit-new-mission"){
+      var title = document.getElementById("new-mission-title").value.trim();
+      var time = document.getElementById("new-mission-time").value.trim();
+      var active = document.getElementById("new-mission-active").checked;
+      if(!title){ alert("미션 제목을 입력하세요."); return; }
+      if(!newMissionCategory){ alert("훈련 영역을 선택하세요."); return; }
+      if(newMissionMode==="admin"){
+        if(!newMissionSelectedTrainees.length){ alert("훈련생을 한 명 이상 선택하세요."); return; }
+        newMissionSelectedTrainees.forEach(function(tid){
+          data.missions.push({ id: uid(), title: title, categoryKey: newMissionCategory, traineeId: tid, time: time, active: active });
+        });
+        save();
+        currentRoute = "admin"; renderAll();
+      } else {
+        data.missions.push({ id: uid(), title: title, categoryKey: newMissionCategory, traineeId: data.currentTraineeId, time: time, active: active });
+        save();
+        currentRoute = "missions"; lastTab = "missions"; renderAll();
+      }
+    }
+
+    else if(action==="admin-off"){
+      data.adminMode = false; save();
+      currentRoute = "my"; lastTab = "my"; renderAll();
+    }
+    else if(action==="add-org"){
+      var orgInput = document.getElementById("new-org-name");
+      var oname = orgInput.value.trim();
+      if(!oname){ alert("단체명을 입력하세요."); return; }
+      data.orgs.push({ id: uid(), name: oname });
+      save(); renderAll();
+    }
+    else if(action==="del-org"){
+      if(!confirm("단체를 삭제하면 소속 기수·조·훈련생·미션·기록도 함께 삭제됩니다. 계속할까요?")) return;
+      var oid = t.dataset.id;
+      var cIds = cohortsOf(oid).map(function(c){return c.id;});
+      var gIds3 = data.groups.filter(function(g){return cIds.indexOf(g.cohortId)>-1;}).map(function(g){return g.id;});
+      var tIds3 = data.trainees.filter(function(tr){return cIds.indexOf(tr.cohortId)>-1;}).map(function(tr){return tr.id;});
+      data.missions = data.missions.filter(function(m){return tIds3.indexOf(m.traineeId)===-1;});
+      data.groups = data.groups.filter(function(g){return cIds.indexOf(g.cohortId)===-1;});
+      data.trainees = data.trainees.filter(function(tr){return cIds.indexOf(tr.cohortId)===-1;});
+      data.cohorts = data.cohorts.filter(function(c){return c.orgId!==oid;});
+      data.orgs = data.orgs.filter(function(o){return o.id!==oid;});
+      if(tIds3.indexOf(data.currentTraineeId)>-1) data.currentTraineeId = null;
+      save(); renderAll();
+    }
+    else if(action==="change-pin"){
+      var pinInput = document.getElementById("new-admin-pin");
+      var v = pinInput.value.trim();
+      if(!v){ alert("새 PIN을 입력하세요."); return; }
+      data.adminPin = v; save(); pinInput.value=""; alert("PIN이 변경되었습니다.");
+    }
+    else if(action==="add-cohort"){
+      var coOrgId = document.getElementById("new-cohort-org").value;
+      var ci = document.getElementById("new-cohort-name");
+      var cname = ci.value.trim();
+      if(!coOrgId){ alert("단체를 선택하세요."); return; }
+      if(!cname){ alert("기수명을 입력하세요."); return; }
+      data.cohorts.push({ id: uid(), orgId: coOrgId, name: cname }); save(); renderAll();
+    }
+    else if(action==="del-cohort"){
+      if(!confirm("기수를 삭제하면 소속 조·훈련생·미션·기록도 함께 삭제됩니다. 계속할까요?")) return;
+      var cid = t.dataset.id;
+      var gIds = groupsOf(cid).map(function(g){return g.id;});
+      var tIds = data.trainees.filter(function(tr){return tr.cohortId===cid;}).map(function(tr){return tr.id;});
+      data.missions = data.missions.filter(function(m){return tIds.indexOf(m.traineeId)===-1;});
+      data.groups = data.groups.filter(function(g){return g.cohortId!==cid;});
+      data.trainees = data.trainees.filter(function(tr){return tr.cohortId!==cid;});
+      data.cohorts = data.cohorts.filter(function(c){return c.id!==cid;});
+      if(tIds.indexOf(data.currentTraineeId)>-1) data.currentTraineeId = null;
+      save(); renderAll();
+    }
+    else if(action==="add-group"){
+      var gcId = document.getElementById("new-group-cohort").value;
+      var gnI = document.getElementById("new-group-name");
+      var gname = gnI.value.trim();
+      if(!gcId){ alert("기수를 선택하세요."); return; }
+      if(!gname){ alert("조 이름을 입력하세요."); return; }
+      data.groups.push({ id: uid(), cohortId: gcId, name: gname }); save(); renderAll();
+    }
+    else if(action==="del-group"){
+      if(!confirm("조를 삭제하면 소속 훈련생·미션·기록도 함께 삭제됩니다. 계속할까요?")) return;
+      var gid = t.dataset.id;
+      var tIds2 = data.trainees.filter(function(tr){return tr.groupId===gid;}).map(function(tr){return tr.id;});
+      data.missions = data.missions.filter(function(m){return tIds2.indexOf(m.traineeId)===-1;});
+      data.trainees = data.trainees.filter(function(tr){return tr.groupId!==gid;});
+      data.groups = data.groups.filter(function(g){return g.id!==gid;});
+      if(tIds2.indexOf(data.currentTraineeId)>-1) data.currentTraineeId = null;
+      save(); renderAll();
+    }
+    else if(action==="add-trainee"){
+      var tcId = document.getElementById("new-trainee-cohort").value;
+      var tgId = document.getElementById("new-trainee-group").value;
+      var tnI = document.getElementById("new-trainee-name");
+      var tname = tnI.value.trim();
+      var tpwI = document.getElementById("new-trainee-password");
+      var tpw = tpwI.value.trim();
+      if(!tcId || !tgId){ alert("기수와 조를 선택하세요."); return; }
+      if(!tname){ alert("이름을 입력하세요."); return; }
+      if(!tpw){ alert("초기 비밀번호를 입력하세요."); return; }
+      data.trainees.push({ id: uid(), cohortId: tcId, groupId: tgId, name: tname, password: tpw }); save(); renderAll();
+    }
+    else if(action==="reset-trainee-password"){
+      var rid = t.dataset.id;
+      var rtr = trainee(rid);
+      var newRpw = prompt("'"+rtr.name+"'의 새 비밀번호를 입력하세요.");
+      if(newRpw===null) return;
+      if(!newRpw.trim()){ alert("비밀번호를 입력하세요."); return; }
+      rtr.password = newRpw.trim(); save();
+      alert("비밀번호가 초기화되었습니다.");
+    }
+    else if(action==="del-trainee"){
+      if(!confirm("훈련생을 삭제하면 관련 미션·기록도 함께 삭제됩니다. 계속할까요?")) return;
+      var trid = t.dataset.id;
+      var mIds = data.missions.filter(function(m){return m.traineeId===trid;}).map(function(m){return m.id;});
+      Object.keys(data.completions).forEach(function(k){
+        var missionId = k.slice(0, k.lastIndexOf("|"));
+        if(mIds.indexOf(missionId)>-1) delete data.completions[k];
+      });
+      data.missions = data.missions.filter(function(m){return m.traineeId!==trid;});
+      data.trainees = data.trainees.filter(function(tr){return tr.id!==trid;});
+      if(data.currentTraineeId===trid) data.currentTraineeId = null;
+      save(); renderAll();
+    }
+    else if(action==="del-mission"){
+      if(!confirm("이 미션과 완료 기록을 삭제할까요?")) return;
+      var delId = t.dataset.id;
+      Object.keys(data.completions).forEach(function(k){
+        if(k.slice(0, k.lastIndexOf("|"))===delId) delete data.completions[k];
+      });
+      data.missions = data.missions.filter(function(m){return m.id!==delId;});
+      save(); renderAll();
+    }
+  }
+
+  renderAll();
+
+  setInterval(function(){
+    var el = document.getElementById("home-datetime");
+    if(el) el.textContent = formatDateTime(new Date());
+  }, 15000);
+})();
+</script>
+</body>
+</html>
