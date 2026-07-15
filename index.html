@@ -527,17 +527,13 @@
 
   // ---------- Login ----------
   function renderLoginGate(){
-    if(!data.trainees.length){
-      return '<div class="page-header"><h2>비전 스케치</h2></div>' +
-        '<div class="card empty">등록된 훈련생이 없습니다.<br>관리자 모드에서 기수·조·훈련생을 먼저 등록해주세요.<br><br>' +
-        '<button class="btn" data-action="go-admin">관리자 모드로 시작하기</button></div>';
-    }
     return renderLogin();
   }
 
   function renderLogin(){
     if(!data.trainees.length){
-      return renderLoginGate();
+      return '<div class="page-header"><h2>로그인</h2></div>' +
+        '<div class="card empty">아직 등록된 훈련생이 없습니다.<br>우측 상단 ⚙ 아이콘(관리자 모드)에서<br>단체·기수·조·훈련생을 먼저 등록해주세요.</div>';
     }
 
     var orgOpts = data.orgs.map(function(o){
