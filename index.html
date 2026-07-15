@@ -189,8 +189,9 @@
 
   .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
   .cal-head button{border:none; background:#fff; border-radius:8px; width:30px; height:30px; box-shadow:var(--shadow); cursor:pointer;}
-  .cal-grid{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:4px; text-align:center; width:100%;}
-  .cal-dow{font-size:11px; color:var(--muted); font-weight:700; padding-bottom:4px; min-width:0;}
+  .cal-dow-row{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px; text-align:center; width:100%; margin-bottom:6px;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px; text-align:center; width:100%;}
+  .cal-dow{font-size:11px; color:var(--muted); font-weight:700; min-width:0;}
   .cal-day{
     aspect-ratio:1; border-radius:10px; display:flex; align-items:center; justify-content:center;
     font-size:clamp(10px,3vw,12.5px); font-weight:700; cursor:pointer; border:2px solid transparent; min-width:0;
@@ -237,7 +238,7 @@
     { key:"character",  label:"성품훈련", icon:"💗", color:"#ec4899" },
     { key:"health",    label:"건강관리", icon:"💪", color:"#10b981" },
     { key:"skill",     label:"역량관리", icon:"🏆", color:"#f59e0b" },
-    { key:"finance",   label:"재무관리", icon:"💰", color:"#8b5cf6" }
+    { key:"finance",   label:"재정관리", icon:"💰", color:"#8b5cf6" }
   ];
 
   function catOf(key){ return CATEGORIES.find(function(c){return c.key===key;}); }
@@ -774,7 +775,8 @@
       '<div class="cal-head"><button data-action="cal-prev">‹</button>' +
       '<div style="font-weight:800;">'+calYear+'년 '+(calMonth+1)+'월</div>' +
       '<button data-action="cal-next">›</button></div>' +
-      '<div class="cal-grid">'+dows+cells+'</div>' +
+      '<div class="cal-dow-row">'+dows+'</div>' +
+      '<div class="cal-grid">'+cells+'</div>' +
     '</div>' +
     '<div class="section-title" style="font-weight:800; font-size:13.5px; margin:6px 0 10px;">'+calSelectedDate+' 미션</div>' +
     listHtml;
