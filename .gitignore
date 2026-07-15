@@ -1,0 +1,30 @@
+# Vercel
+.vercel
+
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Windows system files
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# macOS system files
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
