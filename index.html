@@ -284,7 +284,7 @@
       if(!p.cohorts || !p.missions || !p.completions) return defaultData();
       p.adminMode = false; // never persist an unlocked admin session across page loads
       if(!p.adminPin) p.adminPin = "0000";
-      if(typeof p.currentTraineeId === "undefined") p.currentTraineeId = null;
+      p.currentTraineeId = null; // always require a fresh personal login on page load
       if(!Array.isArray(p.orgs)){
         p.orgs = [];
         if(p.orgName){ p.orgs.push({ id: uid(), name: p.orgName }); }
