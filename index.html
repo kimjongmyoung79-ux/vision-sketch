@@ -282,7 +282,7 @@
       if(!raw) return defaultData();
       var p = JSON.parse(raw);
       if(!p.cohorts || !p.missions || !p.completions) return defaultData();
-      if(typeof p.adminMode !== "boolean") p.adminMode = false;
+      p.adminMode = false; // never persist an unlocked admin session across page loads
       if(!p.adminPin) p.adminPin = "0000";
       if(typeof p.currentTraineeId === "undefined") p.currentTraineeId = null;
       if(!Array.isArray(p.orgs)){
